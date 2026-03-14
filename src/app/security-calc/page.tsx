@@ -406,12 +406,12 @@ export default function SecurityCalcPage() {
             {/* Visual Timeline */}
             <div className="relative mb-8">
               <div className="absolute top-4 left-4 right-4 h-1 bg-slate-200 rounded-full" />
-              <div className="absolute top-4 left-4 h-1 rounded-full transition-all duration-500"
+              <div
+                className={`absolute top-4 left-4 h-1 rounded-full transition-all duration-500 ${colors.accent}`}
                 style={{
                   width: `${((currentPhaseIdx + 1) / rule.phases.length) * 100}%`,
                   maxWidth: "calc(100% - 32px)",
                 }}
-                className={colors.accent}
               />
               <div className="flex justify-between relative">
                 {phaseCalcs.map((p, i) => (
