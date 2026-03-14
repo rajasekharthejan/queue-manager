@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -95,10 +95,23 @@ function Field({ label, value }: { label: string; value: string | number | null 
   );
 }
 
+const FUEL_TYPES = ["Solar", "Wind", "Battery Storage", "Solar + Storage", "Wind + Storage", "Natural Gas"];
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+
 export default function RequestDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("");
   const [isResolution, setIsResolution] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
+  const [converted, setConverted] = useState(false);
+  const [convertedProjectId, setConvertedProjectId] = useState<number | null>(null);
+  // Convert form fields
+  const [convFuel, setConvFuel] = useState("Solar");
+  const [convState, setConvState] = useState("NY");
+  const [convCounty, setConvCounty] = useState("");
+  const [convUtility, setConvUtility] = useState("");
+  const [convQueue, setConvQueue] = useState("");
+  const [convCod, setConvCod] = useState("2028-06-01");
   const r = MOCK_REQUEST;
 
   const daysSinceCreation = Math.floor((Date.now() - new Date(r.created_at).getTime()) / 86400000);
@@ -124,7 +137,19 @@ export default function RequestDetailPage() {
               Request #{r.id} &middot; Created {new Date(r.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} &middot; {daysSinceCreation} days elapsed
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {converted && (
+              <Link href={`/projects/${convertedProjectId}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100 border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-200">
+                ✓ Converted to Project →
+              </Link>
+            )}
+            {!converted && (r.status === "Completed" || r.status === "Under Review" || r.status === "In Progress") && (
+              <button onClick={() => setShowConvert(!showConvert)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 shadow-sm">
+                🔄 Convert to Project
+              </button>
+            )}
             <Link href={`/requests/${r.id}`} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
               Edit
             </Link>
@@ -193,6 +218,143 @@ export default function RequestDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Convert to Project Form */}
+      {showConvert && !converted && (
+        <div className="mb-8 rounded-xl bg-emerald-50 p-6 shadow-sm border-2 border-emerald-300">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-emerald-800">Convert Request to Queue Project</h3>
+              <p className="text-sm text-emerald-600 mt-0.5">Pre-filled from request data. Complete the remaining fields to create a full-scope interconnection project.</p>
+            </div>
+            <button onClick={() => setShowConvert(false)} className="text-sm text-slate-500 hover:text-slate-700">✕ Close</button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Pre-filled (read-only) */}
+            <div className="rounded-lg bg-white p-5 border border-emerald-200">
+              <h4 className="text-xs font-semibold text-emerald-700 uppercase mb-3">Pre-Filled from Request</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Project Name</label>
+                  <input type="text" readOnly value={r.project_name || r.title}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">ISO Region</label>
+                    <input type="text" readOnly value={r.iso_region}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Size (MW)</label>
+                    <input type="text" readOnly value={`${r.injection_mw} MW`}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">POI</label>
+                    <input type="text" readOnly value={r.poi || ""}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Voltage (kV)</label>
+                    <input type="text" readOnly value={r.voltage_kv ? `${r.voltage_kv} kV` : ""}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Source Request</label>
+                  <input type="text" readOnly value={`Request #${r.id}: ${r.request_type}`}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" />
+                </div>
+              </div>
+            </div>
+
+            {/* User-editable fields */}
+            <div className="rounded-lg bg-white p-5 border border-emerald-200">
+              <h4 className="text-xs font-semibold text-amber-700 uppercase mb-3">Complete These Fields</h4>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Fuel Type *</label>
+                    <select value={convFuel} onChange={(e) => setConvFuel(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white">
+                      {FUEL_TYPES.map((f) => <option key={f}>{f}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">State *</label>
+                    <select value={convState} onChange={(e) => setConvState(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white">
+                      {US_STATES.map((s) => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">County</label>
+                    <input type="text" value={convCounty} onChange={(e) => setConvCounty(e.target.value)} placeholder="e.g., Albany"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Utility</label>
+                    <input type="text" value={convUtility} onChange={(e) => setConvUtility(e.target.value)} placeholder="e.g., PSEG"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Queue Number *</label>
+                  <input type="text" value={convQueue} onChange={(e) => setConvQueue(e.target.value)} placeholder="e.g., AF2-789"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Planned COD *</label>
+                  <input type="date" value={convCod} onChange={(e) => setConvCod(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between">
+            <p className="text-xs text-emerald-600">This will create a new project in the interconnection queue with status &quot;Pre-Application&quot;</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowConvert(false)}
+                className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={() => {
+                const newId = Math.floor(Math.random() * 1000) + 100;
+                setConvertedProjectId(newId);
+                setConverted(true);
+                setShowConvert(false);
+              }}
+                className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 shadow-sm">
+                ✓ Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conversion Success */}
+      {converted && (
+        <div className="mb-8 rounded-xl bg-emerald-50 p-5 border border-emerald-300 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white text-lg">✓</div>
+            <div>
+              <p className="text-sm font-bold text-emerald-800">Request successfully converted to project!</p>
+              <p className="text-xs text-emerald-600">Project &quot;{r.project_name || r.title}&quot; has been added to the interconnection queue as a Pre-Application project.</p>
+            </div>
+          </div>
+          <Link href={`/projects/${convertedProjectId}`}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+            View Project →
+          </Link>
+        </div>
+      )}
 
       {/* Detail Grid */}
       <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">

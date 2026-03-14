@@ -32,12 +32,12 @@ const MOCK_PROJECTS: Project[] = [
   { id: 3, project_name: "PJM Solar Hub", description: "200 MW solar + storage hybrid in Lancaster County", fuel_type: "Solar + Storage", size_mw: 200, capacity_mw: 150, iso_region: "PJM", state: "PA", county: "Lancaster", queue_number: "AH1-234", utility: "PPL Electric", interconnection_status: "Facilities Study", security_posted_to_date: 3500000, security_at_risk_to_date: 2800000, study_deposits_posted: 400000, sunk_cost_to_date: 550000, planned_cod: "2027-03-01", next_due_date: "2025-08-01", next_security_milestone: 2400000 },
   { id: 4, project_name: "Desert Sun BESS", description: "400 MW battery storage in Riverside County, CA", fuel_type: "Battery Storage", size_mw: 400, capacity_mw: 400, iso_region: "CAISO", state: "CA", county: "Riverside", queue_number: "CL2023-456", utility: "SCE", interconnection_status: "System Impact Study", security_posted_to_date: 4200000, security_at_risk_to_date: 3000000, study_deposits_posted: 500000, sunk_cost_to_date: 720000, planned_cod: "2028-01-01", next_due_date: "2025-12-01", next_security_milestone: 3300000 },
   { id: 5, project_name: "Prairie Wind SPP", description: "300 MW wind project in Woodward County, OK", fuel_type: "Wind", size_mw: 300, capacity_mw: 250, iso_region: "SPP", state: "OK", county: "Woodward", queue_number: "DISIS-2024-089", utility: "OGE", interconnection_status: "Feasibility Study", security_posted_to_date: 900000, security_at_risk_to_date: 500000, study_deposits_posted: 120000, sunk_cost_to_date: 180000, planned_cod: "2028-06-01", next_due_date: "2025-07-15", next_security_milestone: 1200000 },
-  { id: 6, project_name: "Texas Solar Ranch", description: "500 MW utility-scale solar in Webb County, TX", fuel_type: "Solar", size_mw: 500, capacity_mw: 450, iso_region: "ERCOT", state: "TX", county: "Webb", queue_number: "INR-2023-1105", utility: "Oncor", interconnection_status: "IA Negotiation", security_posted_to_date: 6000000, security_at_risk_to_date: 5200000, study_deposits_posted: 350000, sunk_cost_to_date: 900000, planned_cod: "2026-09-01", next_due_date: "2025-04-01", next_security_milestone: 4000000 },
+  { id: 6, project_name: "Texas Solar Ranch", description: "500 MW utility-scale solar in Webb County, TX", fuel_type: "Solar", size_mw: 500, capacity_mw: 450, iso_region: "ERCOT", state: "TX", county: "Webb", queue_number: "INR-2023-1105", utility: "Oncor", interconnection_status: "Commercial Operation", security_posted_to_date: 6000000, security_at_risk_to_date: 0, study_deposits_posted: 350000, sunk_cost_to_date: 900000, planned_cod: "2025-09-01", next_due_date: "", next_security_milestone: 0 },
   { id: 7, project_name: "Appalachian Wind", description: "275 MW wind project in Grant County, WV", fuel_type: "Wind", size_mw: 275, capacity_mw: 220, iso_region: "PJM", state: "WV", county: "Grant", queue_number: "AF2-567", utility: "AEP", interconnection_status: "Feasibility Study", security_posted_to_date: 400000, security_at_risk_to_date: 150000, study_deposits_posted: 60000, sunk_cost_to_date: 95000, planned_cod: "2029-03-01", next_due_date: "2025-10-01", next_security_milestone: 500000 },
   { id: 8, project_name: "Nevada BESS", description: "250 MW battery storage in Clark County, NV", fuel_type: "Battery Storage", size_mw: 250, capacity_mw: 250, iso_region: "CAISO", state: "NV", county: "Clark", queue_number: "CL2023-789", utility: "NVE", interconnection_status: "Facilities Study", security_posted_to_date: 2800000, security_at_risk_to_date: 2200000, study_deposits_posted: 300000, sunk_cost_to_date: 420000, planned_cod: "2027-09-01", next_due_date: "2025-11-01", next_security_milestone: 2000000 },
   { id: 9, project_name: "Gulf Coast Wind", description: "450 MW wind farm in Cameron County, LA", fuel_type: "Wind", size_mw: 450, capacity_mw: 380, iso_region: "MISO", state: "LA", county: "Cameron", queue_number: "J1198", utility: "Entergy", interconnection_status: "System Impact Study", security_posted_to_date: 1500000, security_at_risk_to_date: 1000000, study_deposits_posted: 200000, sunk_cost_to_date: 310000, planned_cod: "2028-09-01", next_due_date: "2025-08-15", next_security_milestone: 2800000 },
   { id: 10, project_name: "Carolina Hybrid", description: "320 MW solar + storage hybrid in Cumberland County, NC", fuel_type: "Solar + Storage", size_mw: 320, capacity_mw: 260, iso_region: "PJM", state: "NC", county: "Cumberland", queue_number: "AH2-890", utility: "Duke", interconnection_status: "System Impact Study", security_posted_to_date: 1800000, security_at_risk_to_date: 1200000, study_deposits_posted: 280000, sunk_cost_to_date: 350000, planned_cod: "2028-03-01", next_due_date: "2025-09-15", next_security_milestone: 1600000 },
-  { id: 11, project_name: "Kansas Wind Farm", description: "400 MW wind farm in Ford County, KS", fuel_type: "Wind", size_mw: 400, capacity_mw: 340, iso_region: "SPP", state: "KS", county: "Ford", queue_number: "DISIS-2022-045", utility: "Evergy", interconnection_status: "IA Executed", security_posted_to_date: 7500000, security_at_risk_to_date: 6800000, study_deposits_posted: 400000, sunk_cost_to_date: 1200000, planned_cod: "2026-12-01", next_due_date: "2025-05-01", next_security_milestone: 5000000 },
+  { id: 11, project_name: "Kansas Wind Farm", description: "400 MW wind farm in Ford County, KS", fuel_type: "Wind", size_mw: 400, capacity_mw: 340, iso_region: "SPP", state: "KS", county: "Ford", queue_number: "DISIS-2022-045", utility: "Evergy", interconnection_status: "Commercial Operation", security_posted_to_date: 7500000, security_at_risk_to_date: 0, study_deposits_posted: 400000, sunk_cost_to_date: 1200000, planned_cod: "2025-12-01", next_due_date: "", next_security_milestone: 0 },
   { id: 12, project_name: "New England Solar", description: "120 MW solar project in Berkshire County, MA", fuel_type: "Solar", size_mw: 120, capacity_mw: 100, iso_region: "ISO-NE", state: "MA", county: "Berkshire", queue_number: "NE-2024-0331", utility: "Eversource", interconnection_status: "Facilities Study", security_posted_to_date: 1200000, security_at_risk_to_date: 900000, study_deposits_posted: 150000, sunk_cost_to_date: 210000, planned_cod: "2027-06-01", next_due_date: "2025-07-01", next_security_milestone: 800000 },
 ];
 
@@ -85,45 +85,25 @@ export default function Dashboard() {
   const [filterFuel, setFilterFuel] = useState("");
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [stageTab, setStageTab] = useState<"all" | "development" | "operating">("all");
 
   useEffect(() => {
     fetchProjects();
-  }, [filterISO, filterFuel, search]);
+  }, [filterISO, filterFuel, search, stageTab]);
 
   async function fetchProjects() {
     setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterISO) params.set("iso", filterISO);
-      if (filterFuel) params.set("fuel", filterFuel);
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/projects?${params}`);
-      if (!res.ok) throw new Error("API unavailable");
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setProjects(data);
-      } else {
-        // Fall back to mock data with client-side filtering
-        let filtered = [...MOCK_PROJECTS];
-        if (filterISO) filtered = filtered.filter((p) => p.iso_region === filterISO);
-        if (filterFuel) filtered = filtered.filter((p) => p.fuel_type === filterFuel);
-        if (search) {
-          const s = search.toLowerCase();
-          filtered = filtered.filter((p) => p.project_name.toLowerCase().includes(s) || p.queue_number.toLowerCase().includes(s) || p.state.toLowerCase().includes(s));
-        }
-        setProjects(filtered);
-      }
-    } catch {
-      // API unavailable (e.g. Vercel) — use mock data with client-side filtering
-      let filtered = [...MOCK_PROJECTS];
-      if (filterISO) filtered = filtered.filter((p) => p.iso_region === filterISO);
-      if (filterFuel) filtered = filtered.filter((p) => p.fuel_type === filterFuel);
-      if (search) {
-        const s = search.toLowerCase();
-        filtered = filtered.filter((p) => p.project_name.toLowerCase().includes(s) || p.queue_number.toLowerCase().includes(s) || p.state.toLowerCase().includes(s));
-      }
-      setProjects(filtered);
+    // Use mock data with client-side filtering (consistent across local & Vercel)
+    let filtered = [...MOCK_PROJECTS];
+    if (stageTab === "development") filtered = filtered.filter((p) => p.interconnection_status !== "Commercial Operation");
+    if (stageTab === "operating") filtered = filtered.filter((p) => p.interconnection_status === "Commercial Operation");
+    if (filterISO) filtered = filtered.filter((p) => p.iso_region === filterISO);
+    if (filterFuel) filtered = filtered.filter((p) => p.fuel_type === filterFuel);
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = filtered.filter((p) => p.project_name.toLowerCase().includes(s) || p.queue_number.toLowerCase().includes(s) || p.state.toLowerCase().includes(s));
     }
+    setProjects(filtered);
     setLoading(false);
   }
 
@@ -222,6 +202,38 @@ export default function Dashboard() {
         </select>
       </div>
 
+      {/* Stage Tabs */}
+      <div className="mb-6 flex items-center gap-1 rounded-lg bg-slate-100 p-1 w-fit">
+        {([
+          { key: "all" as const, label: "All Projects", count: MOCK_PROJECTS.length },
+          { key: "development" as const, label: "In Development", count: MOCK_PROJECTS.filter(p => p.interconnection_status !== "Commercial Operation").length },
+          { key: "operating" as const, label: "Operating", count: MOCK_PROJECTS.filter(p => p.interconnection_status === "Commercial Operation").length },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setStageTab(tab.key)}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              stageTab === tab.key
+                ? tab.key === "operating"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tab.label}
+            <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              stageTab === tab.key
+                ? tab.key === "operating"
+                  ? "bg-emerald-700 text-emerald-100"
+                  : "bg-slate-100 text-slate-600"
+                : "bg-slate-200 text-slate-500"
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Project Table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -282,9 +294,16 @@ export default function Dashboard() {
                       <p className="text-xs text-slate-400 mt-0.5">{p.utility}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                        {p.interconnection_status}
-                      </span>
+                      {p.interconnection_status === "Commercial Operation" ? (
+                        <Link href="/operating-assets" className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 hover:bg-emerald-200 transition-colors">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Operating
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                          {p.interconnection_status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-emerald-600">
                       {formatCurrency(p.security_posted_to_date)}
