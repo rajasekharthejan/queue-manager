@@ -30,6 +30,7 @@ const ISO_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
   NYISO:   { bg: "bg-pink-100", text: "text-pink-800", bar: "bg-pink-500" },
   "ISO-NE":{ bg: "bg-cyan-100", text: "text-cyan-800", bar: "bg-cyan-500" },
   ERCOT:   { bg: "bg-red-100", text: "text-red-800", bar: "bg-red-500" },
+  SERC:    { bg: "bg-teal-100", text: "text-teal-800", bar: "bg-teal-500" },
 };
 
 const FUEL_COLORS: Record<string, { bar: string; dot: string }> = {
@@ -37,6 +38,9 @@ const FUEL_COLORS: Record<string, { bar: string; dot: string }> = {
   Wind:              { bar: "bg-sky-400", dot: "bg-sky-400" },
   "Battery Storage": { bar: "bg-emerald-400", dot: "bg-emerald-400" },
   "Solar + Storage": { bar: "bg-orange-400", dot: "bg-orange-400" },
+  "Wind + Storage":  { bar: "bg-indigo-400", dot: "bg-indigo-400" },
+  "Natural Gas":     { bar: "bg-rose-400", dot: "bg-rose-400" },
+  "Hybrid":          { bar: "bg-violet-400", dot: "bg-violet-400" },
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -184,12 +188,292 @@ function Section({ title, subtitle, children, className = "" }: { title: string;
   );
 }
 
+// ─── Custom Chart Builder Types ──────────────────────────────────────────────
+type ChartType = "Bar Chart" | "Horizontal Bar" | "Donut Chart" | "Table" | "Stacked Bar";
+type GroupByField = "ISO Region" | "Fuel Type" | "State" | "Status" | "Utility" | "COD Year" | "County";
+type MetricField = "Count" | "Total MW" | "Total Capacity" | "Security Posted ($)" | "Security at Risk ($)" | "Estimated Cost ($)" | "Average MW" | "Average Cost ($)";
+type SortOrder = "Value (High to Low)" | "Value (Low to High)" | "Alphabetical";
+
+const CHART_TYPES: ChartType[] = ["Bar Chart", "Horizontal Bar", "Donut Chart", "Table", "Stacked Bar"];
+const GROUP_BY_OPTIONS: GroupByField[] = ["ISO Region", "Fuel Type", "State", "Status", "Utility", "COD Year", "County"];
+const METRIC_OPTIONS: MetricField[] = ["Count", "Total MW", "Total Capacity", "Security Posted ($)", "Security at Risk ($)", "Estimated Cost ($)", "Average MW", "Average Cost ($)"];
+const SORT_OPTIONS: SortOrder[] = ["Value (High to Low)", "Value (Low to High)", "Alphabetical"];
+
+function getGroupKey(p: typeof PROJECTS[0], field: GroupByField): string {
+  switch (field) {
+    case "ISO Region": return p.iso;
+    case "Fuel Type": return p.fuel;
+    case "State": return p.state;
+    case "Status": return p.status;
+    case "Utility": return p.utility;
+    case "COD Year": return p.cod.slice(0, 4);
+    case "County": return p.county;
+  }
+}
+
+function computeMetric(projects: typeof PROJECTS, metric: MetricField): number {
+  switch (metric) {
+    case "Count": return projects.length;
+    case "Total MW": return projects.reduce((s, p) => s + p.mw, 0);
+    case "Total Capacity": return projects.reduce((s, p) => s + p.capacity, 0);
+    case "Security Posted ($)": return projects.reduce((s, p) => s + p.security_posted, 0);
+    case "Security at Risk ($)": return projects.reduce((s, p) => s + p.security_at_risk, 0);
+    case "Estimated Cost ($)": return projects.reduce((s, p) => s + p.cost, 0);
+    case "Average MW": return projects.length > 0 ? Math.round(projects.reduce((s, p) => s + p.mw, 0) / projects.length) : 0;
+    case "Average Cost ($)": return projects.length > 0 ? Math.round(projects.reduce((s, p) => s + p.cost, 0) / projects.length) : 0;
+  }
+}
+
+function metricUnit(metric: MetricField): string {
+  if (metric === "Count") return "";
+  if (metric.includes("$")) return "$";
+  return "MW";
+}
+
+function formatMetricValue(value: number, metric: MetricField): string {
+  if (metric.includes("$")) return fmt(value);
+  return value.toLocaleString();
+}
+
+const DONUT_HEX_COLORS: Record<string, string> = {
+  // ISO colors
+  PJM: "#3b82f6", MISO: "#22c55e", SPP: "#a855f7", CAISO: "#f97316",
+  NYISO: "#ec4899", "ISO-NE": "#06b6d4", ERCOT: "#ef4444", SERC: "#14b8a6",
+  // Fuel colors
+  Solar: "#fbbf24", Wind: "#38bdf8", "Battery Storage": "#34d399", "Solar + Storage": "#fb923c",
+  "Wind + Storage": "#818cf8", "Natural Gas": "#fb7185", Hybrid: "#a78bfa",
+};
+
+function getDonutColor(label: string, index: number): string {
+  if (DONUT_HEX_COLORS[label]) return DONUT_HEX_COLORS[label];
+  const fallbacks = ["#94a3b8", "#64748b", "#cbd5e1", "#475569", "#e2e8f0", "#334155", "#f1f5f9", "#1e293b"];
+  return fallbacks[index % fallbacks.length];
+}
+
+function getBarColorClass(label: string, groupBy: GroupByField): string {
+  if (groupBy === "ISO Region") return ISO_COLORS[label]?.bar || "bg-amber-400";
+  if (groupBy === "Fuel Type") return FUEL_COLORS[label]?.bar || "bg-amber-400";
+  return "bg-amber-400";
+}
+
+// ─── Custom Chart Renderer ───────────────────────────────────────────────────
+function CustomChartResult({
+  chartType,
+  groupByField,
+  metric,
+  sortOrder,
+  projects,
+}: {
+  chartType: ChartType;
+  groupByField: GroupByField;
+  metric: MetricField;
+  sortOrder: SortOrder;
+  projects: typeof PROJECTS;
+}) {
+  const grouped = groupBy(projects, (p) => getGroupKey(p, groupByField));
+  let entries = Object.entries(grouped).map(([label, ps]) => ({
+    label,
+    value: computeMetric(ps, metric),
+    projects: ps,
+  }));
+
+  // Sort
+  if (sortOrder === "Value (High to Low)") entries.sort((a, b) => b.value - a.value);
+  else if (sortOrder === "Value (Low to High)") entries.sort((a, b) => a.value - b.value);
+  else entries.sort((a, b) => a.label.localeCompare(b.label));
+
+  const unit = metricUnit(metric);
+  const max = Math.max(...entries.map((e) => e.value), 1);
+
+  if (chartType === "Bar Chart") {
+    return (
+      <div>
+        <div className="flex items-end gap-2 h-64">
+          {entries.map((entry) => {
+            const heightPct = (entry.value / max) * 100;
+            const barColor = getBarColorClass(entry.label, groupByField);
+            return (
+              <div key={entry.label} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                <span className="text-xs font-bold text-slate-700 text-center">
+                  {formatMetricValue(entry.value, metric)}
+                </span>
+                <div
+                  className={`w-full rounded-t-lg ${barColor} transition-all`}
+                  style={{ height: `${Math.max(heightPct, 3)}%` }}
+                  title={`${entry.label}: ${formatMetricValue(entry.value, metric)}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 mt-2 border-t border-slate-100 pt-2">
+          {entries.map((entry) => (
+            <div key={entry.label} className="flex-1 text-center">
+              <span className="text-xs text-slate-500 truncate block">{entry.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (chartType === "Horizontal Bar") {
+    const colorMap = Object.fromEntries(
+      entries.map((e) => [e.label, getBarColorClass(e.label, groupByField)])
+    );
+    return (
+      <HBar
+        data={entries.map((e) => ({ label: e.label, value: e.value }))}
+        colorMap={colorMap}
+        unit={unit || ""}
+      />
+    );
+  }
+
+  if (chartType === "Donut Chart") {
+    const segments = entries.map((e, i) => ({
+      label: e.label,
+      value: e.value,
+      color: getDonutColor(e.label, i),
+    }));
+    const total = entries.reduce((s, e) => s + e.value, 0);
+    return (
+      <DonutChart
+        segments={segments}
+        centerValue={unit === "$" ? fmt(total) : total.toLocaleString()}
+        centerLabel={metric}
+      />
+    );
+  }
+
+  if (chartType === "Table") {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className="px-4 py-2.5 text-left font-semibold text-slate-600">{groupByField}</th>
+              <th className="px-4 py-2.5 text-right font-semibold text-slate-600">{metric}</th>
+              <th className="px-4 py-2.5 text-right font-semibold text-slate-600">Projects</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {entries.map((entry) => (
+              <tr key={entry.label} className="hover:bg-slate-50 transition-colors">
+                <td className="px-4 py-2.5 font-medium text-slate-900">{entry.label}</td>
+                <td className="px-4 py-2.5 text-right font-semibold text-slate-800">
+                  {formatMetricValue(entry.value, metric)}
+                </td>
+                <td className="px-4 py-2.5 text-right text-slate-500">{entry.projects.length}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold">
+              <td className="px-4 py-2.5 text-slate-700">Total</td>
+              <td className="px-4 py-2.5 text-right text-slate-800">
+                {formatMetricValue(entries.reduce((s, e) => s + e.value, 0), metric)}
+              </td>
+              <td className="px-4 py-2.5 text-right text-slate-500">{projects.length}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    );
+  }
+
+  // Stacked Bar: secondary grouping by fuel type
+  if (chartType === "Stacked Bar") {
+    const allFuelsInData = [...new Set(projects.map((p) => p.fuel))].sort();
+    const fuelHexColors: Record<string, string> = {
+      Solar: "#fbbf24", Wind: "#38bdf8", "Battery Storage": "#34d399", "Solar + Storage": "#fb923c",
+      "Wind + Storage": "#818cf8", "Natural Gas": "#fb7185", Hybrid: "#a78bfa",
+    };
+    const maxStacked = Math.max(
+      ...entries.map((e) => e.projects.reduce((s, p) => s + computeMetric([p], metric), 0)),
+      1
+    );
+
+    return (
+      <div>
+        <div className="flex items-end gap-2 h-64">
+          {entries.map((entry) => {
+            const fuelGrouped = groupBy(entry.projects, (p) => p.fuel);
+            const totalVal = entry.value;
+            const heightPct = (totalVal / maxStacked) * 100;
+
+            return (
+              <div key={entry.label} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                <span className="text-xs font-bold text-slate-700 text-center">
+                  {formatMetricValue(totalVal, metric)}
+                </span>
+                <div
+                  className="w-full rounded-t-lg overflow-hidden flex flex-col-reverse"
+                  style={{ height: `${Math.max(heightPct, 5)}%` }}
+                >
+                  {allFuelsInData.map((fuel) => {
+                    const fuelPs = fuelGrouped[fuel] || [];
+                    if (fuelPs.length === 0) return null;
+                    const fuelVal = computeMetric(fuelPs, metric);
+                    const fuelPct = totalVal > 0 ? (fuelVal / totalVal) * 100 : 0;
+                    return (
+                      <div
+                        key={fuel}
+                        className={`w-full ${FUEL_COLORS[fuel]?.bar || "bg-slate-400"}`}
+                        style={{ height: `${fuelPct}%` }}
+                        title={`${fuel}: ${formatMetricValue(fuelVal, metric)}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 mt-2 border-t border-slate-100 pt-2">
+          {entries.map((entry) => (
+            <div key={entry.label} className="flex-1 text-center">
+              <span className="text-xs text-slate-500 truncate block">{entry.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-3">
+          {allFuelsInData.map((fuel) => (
+            <div key={fuel} className="flex items-center gap-1.5">
+              <div
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: fuelHexColors[fuel] || "#94a3b8" }}
+              />
+              <span className="text-xs text-slate-500">{fuel}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
   const [filterISO, setFilterISO] = useState("");
   const [filterFuel, setFilterFuel] = useState("");
   const [filterState, setFilterState] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+
+  // Custom Chart Builder state
+  const [cbChartType, setCbChartType] = useState<ChartType>("Bar Chart");
+  const [cbGroupBy, setCbGroupBy] = useState<GroupByField>("ISO Region");
+  const [cbMetric, setCbMetric] = useState<MetricField>("Total MW");
+  const [cbSort, setCbSort] = useState<SortOrder>("Value (High to Low)");
+  const [cbGenerated, setCbGenerated] = useState(false);
+  const [cbSnapshot, setCbSnapshot] = useState<{
+    chartType: ChartType;
+    groupBy: GroupByField;
+    metric: MetricField;
+    sort: SortOrder;
+  } | null>(null);
 
   const filtered = PROJECTS.filter((p) => {
     if (filterISO && p.iso !== filterISO) return false;
@@ -238,6 +522,7 @@ export default function AnalyticsDashboard() {
   // Donut segments for fuel
   const fuelColors: Record<string, string> = {
     Solar: "#fbbf24", Wind: "#38bdf8", "Battery Storage": "#34d399", "Solar + Storage": "#fb923c",
+    "Wind + Storage": "#818cf8", "Natural Gas": "#fb7185", Hybrid: "#a78bfa",
   };
   const donutSegments = fuelData.map((d) => ({ label: d.label, value: d.value, color: fuelColors[d.label] || "#94a3b8" }));
 
@@ -246,6 +531,16 @@ export default function AnalyticsDashboard() {
   const allFuels = [...new Set(PROJECTS.map((p) => p.fuel))].sort();
   const allStates = [...new Set(PROJECTS.map((p) => p.state))].sort();
   const allStatuses = [...new Set(PROJECTS.map((p) => p.status))].sort();
+
+  const handleGenerate = () => {
+    setCbSnapshot({
+      chartType: cbChartType,
+      groupBy: cbGroupBy,
+      metric: cbMetric,
+      sort: cbSort,
+    });
+    setCbGenerated(true);
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -292,6 +587,109 @@ export default function AnalyticsDashboard() {
           <option value="">All Statuses</option>
           {allStatuses.map((s) => <option key={s}>{s}</option>)}
         </select>
+      </div>
+
+      {/* ─── Custom Chart Builder ──────────────────────────────────────────── */}
+      <div className="mb-8 rounded-xl bg-white border-2 border-amber-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-50 to-amber-100 px-6 py-4 border-b border-amber-200">
+          <h2 className="text-lg font-bold text-amber-900">Custom Chart Builder</h2>
+          <p className="text-sm text-amber-700 mt-0.5">Build your own visualization from the filtered portfolio data</p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            {/* Chart Type */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Chart Type
+              </label>
+              <select
+                value={cbChartType}
+                onChange={(e) => setCbChartType(e.target.value as ChartType)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                {CHART_TYPES.map((ct) => (
+                  <option key={ct} value={ct}>{ct}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Group By / X-Axis */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                X-Axis / Group By
+              </label>
+              <select
+                value={cbGroupBy}
+                onChange={(e) => setCbGroupBy(e.target.value as GroupByField)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                {GROUP_BY_OPTIONS.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Metric / Y-Axis */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Y-Axis / Metric
+              </label>
+              <select
+                value={cbMetric}
+                onChange={(e) => setCbMetric(e.target.value as MetricField)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                {METRIC_OPTIONS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort By */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Sort By
+              </label>
+              <select
+                value={cbSort}
+                onChange={(e) => setCbSort(e.target.value as SortOrder)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                {SORT_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            className="rounded-lg bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors"
+          >
+            Generate Chart
+          </button>
+
+          {/* Rendered Custom Chart */}
+          {cbGenerated && cbSnapshot && (
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  {cbSnapshot.metric} by {cbSnapshot.groupBy}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {cbSnapshot.chartType} -- sorted {cbSnapshot.sort.toLowerCase()} -- {filtered.length} projects
+                </p>
+              </div>
+              <CustomChartResult
+                chartType={cbSnapshot.chartType}
+                groupByField={cbSnapshot.groupBy}
+                metric={cbSnapshot.metric}
+                sortOrder={cbSnapshot.sort}
+                projects={filtered}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards */}

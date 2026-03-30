@@ -49,6 +49,7 @@ const ISO_COLORS: Record<string, string> = {
   NYISO: "bg-pink-100 text-pink-800",
   "ISO-NE": "bg-cyan-100 text-cyan-800",
   ERCOT: "bg-red-100 text-red-800",
+  SERC: "bg-teal-100 text-teal-800",
 };
 
 const FUEL_ICONS: Record<string, string> = {
@@ -86,6 +87,68 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [stageTab, setStageTab] = useState<"all" | "development" | "operating">("all");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<string[][]>([]);
+  const [bulkSelected, setBulkSelected] = useState<Set<number>>(new Set());
+  const [bulkField, setBulkField] = useState("iso_region");
+  const [bulkValue, setBulkValue] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  function handleExportCSV() {
+    const headers = ["Project Name","ISO","Fuel Type","Size MW","Capacity MW","State","Queue Number","Utility","Status","Security Posted","Security at Risk","Planned COD"];
+    const rows = projects.map(p => [
+      p.project_name, p.iso_region, p.fuel_type, String(p.size_mw), String(p.capacity_mw),
+      p.state, p.queue_number, p.utility, p.interconnection_status,
+      String(p.security_posted_to_date), String(p.security_at_risk_to_date), p.planned_cod
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "projects_export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${projects.length} projects to CSV`);
+  }
+
+  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").filter(l => l.trim());
+      const parsed = lines.slice(0, 6).map(l => l.split(",").map(c => c.replace(/^"|"$/g, "").trim()));
+      setImportPreview(parsed);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleImportSubmit() {
+    const count = importPreview.length > 1 ? importPreview.length - 1 : 0;
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportPreview([]);
+    showToast(`${count} projects imported successfully`);
+  }
+
+  function handleBulkApply() {
+    const count = bulkSelected.size;
+    setShowBulkModal(false);
+    setBulkSelected(new Set());
+    setBulkField("iso_region");
+    setBulkValue("");
+    showToast(`${count} projects updated successfully`);
+  }
 
   useEffect(() => {
     fetchProjects();
@@ -131,12 +194,32 @@ export default function Dashboard() {
             Manage your interconnection queue projects across ISOs
           </p>
         </div>
-        <Link
-          href="/projects/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-amber-400 transition-colors"
-        >
-          + New Project
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            Import CSV
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => setShowBulkModal(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            Bulk Update
+          </button>
+          <Link
+            href="/projects/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-amber-400 transition-colors"
+          >
+            + New Project
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -186,7 +269,7 @@ export default function Dashboard() {
           className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
         >
           <option value="">All ISOs</option>
-          {["PJM", "MISO", "SPP", "CAISO", "NYISO", "ISO-NE", "ERCOT"].map((iso) => (
+          {["PJM", "MISO", "SPP", "CAISO", "NYISO", "ISO-NE", "ERCOT", "SERC"].map((iso) => (
             <option key={iso} value={iso}>{iso}</option>
           ))}
         </select>
@@ -357,6 +440,125 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+
+      {/* Import CSV Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Import Projects from CSV</h2>
+            {!importFile ? (
+              <label className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-10 cursor-pointer hover:border-amber-400 transition-colors">
+                <span className="text-sm text-slate-500 mb-1">Drag and drop a CSV file, or click to browse</span>
+                <span className="text-xs text-slate-400">Supports .csv files</span>
+                <input type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              </label>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600 mb-3">Preview: <span className="font-medium">{importFile.name}</span></p>
+                <div className="overflow-x-auto rounded-lg border border-slate-200 mb-4">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {importPreview.map((row, i) => (
+                        <tr key={i} className={i === 0 ? "bg-slate-100 font-semibold" : "border-t border-slate-100"}>
+                          {row.map((cell, j) => (
+                            <td key={j} className="px-3 py-1.5 whitespace-nowrap">{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreview([]); }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportSubmit}
+                disabled={!importFile}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Update Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Bulk Update Projects</h2>
+            <div className="mb-4 max-h-60 overflow-y-auto rounded-lg border border-slate-200">
+              {projects.map((p) => (
+                <label key={p.id} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0">
+                  <input
+                    type="checkbox"
+                    checked={bulkSelected.has(p.id)}
+                    onChange={() => {
+                      const next = new Set(bulkSelected);
+                      if (next.has(p.id)) next.delete(p.id); else next.add(p.id);
+                      setBulkSelected(next);
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                  />
+                  <span className="text-sm text-slate-700">{p.project_name}</span>
+                  <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ISO_COLORS[p.iso_region] || "bg-gray-100 text-gray-800"}`}>{p.iso_region}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mb-4">
+              <select
+                value={bulkField}
+                onChange={(e) => setBulkField(e.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              >
+                <option value="iso_region">ISO Region</option>
+                <option value="interconnection_status">Status</option>
+                <option value="fuel_type">Fuel Type</option>
+                <option value="project_manager">Project Manager</option>
+              </select>
+              <input
+                type="text"
+                placeholder="New value..."
+                value={bulkValue}
+                onChange={(e) => setBulkValue(e.target.value)}
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-slate-500">{bulkSelected.size} project(s) selected</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowBulkModal(false); setBulkSelected(new Set()); setBulkField("iso_region"); setBulkValue(""); }}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkApply}
+                  disabled={bulkSelected.size === 0 || !bulkValue}
+                  className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

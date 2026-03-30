@@ -71,6 +71,14 @@ export interface Project {
   caiso_phase: string;
   caiso_zone: string;
 
+  phase3_study_status: string;
+  phase3_study_completion_date: string;
+
+  congestion_results: string;
+  power_flow_results: string;
+
+  serc_queue_id: string;
+
   security_milestones: string;
 
   created_at?: string;
@@ -86,7 +94,7 @@ export interface SecurityMilestone {
   refundable: boolean;
 }
 
-export const ISO_REGIONS = ["PJM", "MISO", "SPP", "CAISO", "NYISO", "ISO-NE", "ERCOT"] as const;
+export const ISO_REGIONS = ["PJM", "MISO", "SPP", "CAISO", "NYISO", "ISO-NE", "ERCOT", "SERC"] as const;
 
 export const FUEL_TYPES = [
   "Solar",
