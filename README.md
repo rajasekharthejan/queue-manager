@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Queue Manager
 
-## Getting Started
+A project tracker for **renewable energy interconnection queues**. Manages a portfolio of solar, wind, battery-storage, and hybrid projects across US ISOs/RTOs, tracking security deposits, sunk costs, study phases, and key interconnection milestones.
 
-First, run the development server:
+## What it does
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Project portfolio** — CRUD for renewable projects with full interconnection metadata (size/capacity, fuel type, ISO region, utility, POI voltage, queue number, IA status).
+- **Financial tracking** — security posted, security at risk, study deposits, sunk costs, next security milestone, LGIA security.
+- **Study-phase tracking** — feasibility study, system impact study, facilities study, phase-3 study, commercial-operation milestones — status and completion dates per phase.
+- **ISO-specific fields** — PJM cluster position, MISO DPP phase, SPP DISIS cluster, CAISO cluster/phase/zone, SERC queue ID.
+- **Requests workflow** — intake and triage of project-related requests with detail and edit views.
+- **Operating assets** — tracking of operational resources tied to the project portfolio.
+- **Security forecast** — API-driven projections (`/api/projects/security-forecast`) for upcoming security obligations.
+- **Analytics** — dashboard view of portfolio status, costs, and milestones.
+- **Excel import/export** — bulk data workflows via `xlsx`.
+
+## Tech
+
+- **Framework:** Next.js 16 (App Router), React 19
+- **Language:** TypeScript 5
+- **Styling:** Tailwind CSS 4
+- **Backend-as-a-service:** Supabase (auth + Postgres, SSR via `@supabase/ssr`)
+- **File handling:** `xlsx` for Excel import/export
+- **Utilities:** `date-fns`, `uuid`
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                         # Portfolio dashboard
+│   ├── projects/
+│   │   ├── new/                         # Create project
+│   │   ├── [id]/                        # Project detail
+│   │   ├── [id]/edit/                   # Edit project
+│   │   └── security/                    # Security overview
+│   ├── requests/
+│   │   ├── new/  and  [id]/             # Request intake + detail
+│   ├── operating-assets/                # Operating asset tracking
+│   ├── security-calc/                   # Security calculator
+│   ├── analytics/                       # Portfolio analytics
+│   ├── api/
+│   │   └── projects/
+│   │       ├── route.ts                 # Projects list/create
+│   │       ├── [id]/route.ts            # Project detail/update
+│   │       └── security-forecast/       # Forecast endpoint
+│   └── components/ProjectForm.tsx       # Shared form component
+└── lib/
+    ├── types.ts                         # Project / domain types
+    └── supabase/{client,server}.ts      # Supabase SSR helpers
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+git clone https://github.com/rajasekharthejan/queue-manager
+cd queue-manager
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Configure Supabase — create a .env.local with:
+#   NEXT_PUBLIC_SUPABASE_URL=...
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
-## Learn More
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Visit http://localhost:3000.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Database schema lives under `supabase/` (Supabase migrations).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+In active development. Core portfolio tracking, security/cost fields, and ISO-specific metadata are functional. Analytics and forecasting under ongoing work.
